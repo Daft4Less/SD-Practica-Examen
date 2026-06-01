@@ -1,0 +1,59 @@
+version: '3.8'
+
+# ==========================================
+# LOS SERVICIOS (Tus Contenedores)
+# ==========================================
+services:
+
+  # ------------------------------------------
+  # 1. LA BASE DE DATOS (PostgreSQL / MySQL)
+  # ------------------------------------------
+  database:
+    image: postgres:15-alpine # O cambia a mysql:8.0
+    container_name: mi_base_datos
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: mi_proyecto_db
+    ports:
+      - "5432:5432" # Quita esto si no quieres que la BD sea accesible desde fuera
+    volumes:
+      - db_data:/var/lib/postgresql/data # Persistencia real
+
+  # ------------------------------------------
+  # 2. EL BACKEND (API en Java / Python / Node)
+  # ------------------------------------------
+  backend:
+    build: 
+      context: ./backend # Busca el Dockerfile en la carpeta "backend"
+    container_name: mi_api
+    restart: always
+    ports:
+      - "8080:8080" # Tu puerto local : El puerto del contenedor
+    environment:
+      # Inyectamos las credenciales para que se conecte a la BD de arriba
+      - DB_HOST=database 
+      - DB_USER=root
+      - DB_PASS=password123
+    depends_on:
+      - database # ¡Adiós a la Condición de Carrera! Docker espera a la BD primero
+
+  # ------------------------------------------
+  # 3. EL FRONTEND / PROXY (Angular / Nginx)
+  # ------------------------------------------
+  frontend:
+    build: 
+      context: ./frontend # Busca el Dockerfile en la carpeta "frontend"
+    container_name: mi_web
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend # Espera a que la API esté lista antes de levantar la web
+
+# ==========================================
+# LOS VOLÚMENES (Discos Duros Virtuales)
+# ==========================================
+volumes:
+  db_data: # Define el volumen que usamos en el servicio "database"
